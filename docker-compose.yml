@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:5.7
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: alcom_vin_api
+      MYSQL_USER: vin_lookup
+      MYSQL_PASSWORD: vin_password
+    ports:
+      - '3306:3306'
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: 'alcom-phpmyadmin'
+    links:
+      - db
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: rootpass
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_USER: vin_lookup
+      MYSQL_PASSWORD: vin_password
+    ports:
+      - '8181:80'
+
+  fast_api:
+    build: .
+    depends_on:
+      - db
+    ports:
+      - "8080:80"
+    environment:
+      MYSQL_HOST: db
+      MYSQL_DB: alcom_vin_api
+      MYSQL_USER: vin_lookup
+      MYSQL_PASSWORD: vin_password
+    restart: always
+
+volumes:
+  db_data: {}
+
