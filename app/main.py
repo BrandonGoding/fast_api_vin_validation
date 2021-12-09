@@ -1,8 +1,10 @@
+import datetime
+from typing import Optional
 import fastapi
 import uvicorn
 import databases
 import sqlalchemy
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from decouple import config
 from starlette.middleware.cors import CORSMiddleware as CORSMiddleware
 
@@ -13,6 +15,24 @@ class VehicleIdentificationNumber(BaseModel):
 
 class VinResponse(BaseModel):
     exists: bool
+
+
+class TrailerOwner(BaseModel):
+    email: EmailStr
+    first_name: Optional[str]
+    last_name: Optional[str]
+    address: Optional[str]
+    city: Optional[str]
+    state: Optional[str]
+    country: Optional[str]
+    mobile_phone_number: Optional[str]
+
+
+class WarrantyRegistration(BaseModel):
+    owner: TrailerOwner
+    vehicle_identification_number: str
+    purchase_date: datetime.date
+
 
 
 DATABASE_URL = f"mysql+pymysql://{config('MYSQL_USER')}:{config('MYSQL_PASSWORD')}@{config('MYSQL_HOST')}/{config('MYSQL_DB')}"
@@ -26,6 +46,13 @@ vin_numbers = sqlalchemy.Table(
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
     sqlalchemy.Column("vehicle_identification_number", sqlalchemy.String(100), index=True, unique=True),
+)
+
+warranty_registration = sqlalchemy.Table(
+    "warrantyRegistration",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+
 )
 
 
