@@ -4,6 +4,7 @@ import databases
 import sqlalchemy
 from pydantic import BaseModel
 from decouple import config
+from starlette.middleware.cors import CORSMiddleware as CORSMiddleware
 
 
 class VinNumber(BaseModel):
@@ -33,6 +34,14 @@ metadata.create_all(engine)
 
 
 app = fastapi.FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 
 @app.on_event("startup")
