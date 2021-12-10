@@ -41,7 +41,7 @@ database = databases.Database(DATABASE_URL)
 
 metadata = sqlalchemy.MetaData()
 
-vin_numbers = sqlalchemy.Table(
+vehicle_identification_numbers = sqlalchemy.Table(
     "vehicle_identification_numbers",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
