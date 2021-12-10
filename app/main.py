@@ -6,6 +6,7 @@ import databases
 import sqlalchemy
 from pydantic import BaseModel, EmailStr
 from decouple import config
+from sqlalchemy import func
 from starlette.middleware.cors import CORSMiddleware as CORSMiddleware
 
 
@@ -42,17 +43,35 @@ database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 
 vin_numbers = sqlalchemy.Table(
-    "vehicleIdentificationNumbers",
+    "vehicle_identification_numbers",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
     sqlalchemy.Column("vehicle_identification_number", sqlalchemy.String(100), index=True, unique=True),
 )
 
-warranty_registration = sqlalchemy.Table(
-    "warrantyRegistration",
+trailer_owners = sqlalchemy.Table(
+    "trailer_owners",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("email", sqlalchemy.String(100), unique=True),
+    sqlalchemy.Column("first_name", sqlalchemy.String(65), nullable=True),
+    sqlalchemy.Column("last_name", sqlalchemy.String(65), nullable=True),
+    sqlalchemy.Column("address", sqlalchemy.String(65), nullable=True),
+    sqlalchemy.Column("city", sqlalchemy.String(65), nullable=True),
+    sqlalchemy.Column("state", sqlalchemy.String(65), nullable=True),
+    sqlalchemy.Column("country", sqlalchemy.String(65), nullable=True),
+    sqlalchemy.Column("mobile_phone_number", sqlalchemy.String(65), nullable=True),
+)
 
+
+warranty_registration = sqlalchemy.Table(
+    "warranty_registrations",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("vin_id", sqlalchemy.ForeignKey('vehicle_identification_numbers.id'), nullable=False, index=True),
+    sqlalchemy.Column("trailer_owner_id", sqlalchemy.ForeignKey('trailer_owners.id'), nullable=False, index=True),
+    sqlalchemy.Column("purchase_date", sqlalchemy.Date, nullable=False),
+    sqlalchemy.Column("date_registered", sqlalchemy.DateTime, server_default=func.now())
 )
 
 
