@@ -1,4 +1,4 @@
-from typing import List
+from typing import Optional, List
 
 import fastapi
 import pymysql.err
@@ -14,8 +14,17 @@ class VehicleIdentificationNumber(BaseModel):
     vehicle_identification_number: str
 
 
+class VehicleIdentificationNumberWithID(VehicleIdentificationNumber):
+    id: int
+
+
 class VinResponse(BaseModel):
     exists: bool
+
+
+class VinInsertResponse(BaseModel):
+    inserted_vins: List[VehicleIdentificationNumberWithID]
+    failed_insert: List[VehicleIdentificationNumber]
 
 
 DATABASE_URL = f"mysql+pymysql://{config('MYSQL_USER')}:{config('MYSQL_PASSWORD')}@{config('MYSQL_HOST')}/{config('MYSQL_DB')}"
@@ -73,7 +82,7 @@ async def validate_vin(vin: VehicleIdentificationNumber):
     return {"exists": False}
 
 
-@app.post("/insert/multiple")
+@app.post("/insert/multiple", response_model=VinInsertResponse)
 async def insert_multiple_vin_numbers(vins: List[VehicleIdentificationNumber]):
     results_list = {
         "inserted_vins": [],
