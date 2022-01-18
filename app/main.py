@@ -1,4 +1,7 @@
+from typing import List
+
 import fastapi
+import pymysql.err
 import uvicorn
 import databases
 import sqlalchemy
@@ -54,7 +57,7 @@ async def shutdown():
     await database.disconnect()
 
 
-@app.get("/")
+@app.get("/")  # RETURNS 200 RESPONSE FOR AWS LOAD BALANCERfff
 async def hello_world():
     return {"Hello": "World"}
 
@@ -68,6 +71,23 @@ async def validate_vin(vin: VehicleIdentificationNumber):
     if result:
         return {"exists": True}
     return {"exists": False}
+
+
+@app.post("/insert/multiple")
+async def insert_multiple_vin_numbers(vins: List[VehicleIdentificationNumber]):
+    results_list = {
+        "inserted_vins": [],
+        "failed_insert": []
+    }
+
+    for vin_number in vins:
+        try:
+            query = vin_numbers.insert()
+            result = await database.execute(query=query, values={"vehicle_identification_number": vin_number.vehicle_identification_number})
+            results_list.get('inserted_vins').append({**vin_number.dict(), "id": result})
+        except pymysql.err.IntegrityError:
+            results_list.get('failed_insert').append(vin_number)
+    return results_list
 
 
 if __name__ == "__main__":
