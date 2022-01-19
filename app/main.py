@@ -1,14 +1,15 @@
 from typing import Optional, List
-
 import fastapi
+from fastapi.security.api_key import APIKey, APIKeyQuery, APIKeyHeader, APIKeyCookie
 import pymysql.err
 import uvicorn
 import databases
 import sqlalchemy
-from fastapi import HTTPException
+from fastapi import HTTPException, Security, Depends
 from pydantic import BaseModel
 from decouple import config
 from starlette.middleware.cors import CORSMiddleware as CORSMiddleware
+from starlette.status import HTTP_403_FORBIDDEN
 
 
 class VehicleIdentificationNumber(BaseModel):
@@ -47,6 +48,7 @@ vin_table = sqlalchemy.Table(
 engine = sqlalchemy.create_engine(DATABASE_URL)
 metadata.create_all(engine)
 
+api_key_query = APIKeyQuery(name=config("API_KEY_NAME"), auto_error=False)
 
 app = fastapi.FastAPI()
 
@@ -54,6 +56,18 @@ app = fastapi.FastAPI()
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
+
+
+async def get_api_key(
+        api_key_query: str = Security(api_key_query),
+):
+
+    if api_key_query == config('API_KEY'):
+        return api_key_query
+    else:
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
+        )
 
 
 @app.on_event("startup")
@@ -83,7 +97,7 @@ async def validate_vehicle_identification_number(vin: VehicleIdentificationNumbe
 
 
 @app.post("/insert", response_model=VehicleIdentificationNumberWithID, tags=["CRUD"])
-async def insert_vehicle_identification_number(vin: VehicleIdentificationNumber):
+async def insert_vehicle_identification_number(vin: VehicleIdentificationNumber, api_key: APIKey = Depends(get_api_key)):
     try:
         query = vin_table.insert()
         result = await database.execute(
@@ -100,6 +114,7 @@ async def insert_vehicle_identification_number(vin: VehicleIdentificationNumber)
 @app.post("/insert/multiple", response_model=VinInsertResponse, tags=["CRUD"])
 async def insert_multiple_vehicle_identification_numbers(
     vins: List[VehicleIdentificationNumber],
+    api_key: APIKey = Depends(get_api_key)
 ):
     results_list = {"inserted_vins": [], "failed_insert": []}
 
@@ -120,16 +135,14 @@ async def insert_multiple_vehicle_identification_numbers(
     return results_list
 
 
-@app.delete("/delete", tags=['CRUD'], status_code=204, response_model=VehicleIdentificationNumber)
-async def remove_vehicle_identification_number(vin: VehicleIdentificationNumberWithID):
+@app.delete("/delete", tags=['CRUD'], status_code=204)
+async def remove_vehicle_identification_number(vin: VehicleIdentificationNumberWithID, api_key: APIKey = Depends(get_api_key)):
     query = vin_table.select().filter(vin_table.c.id == vin.id, vin_table.c.vehicle_identification_number == vin.vehicle_identification_number)
     vin_to_delete = await database.fetch_one(query=query)
     if vin_to_delete is None:
         raise HTTPException(status_code=404)
     query = vin_table.delete().where(vin_table.c.id == vin.id, vin_table.c.vehicle_identification_number == vin.vehicle_identification_number)
     await database.execute(query=query)
-    return {"vehicle_identification_number": vin.id}
-
 
 if __name__ == "__main__":
     uvicorn.run(app, port=8000, host="0.0.0.0")
