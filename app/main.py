@@ -66,12 +66,12 @@ async def shutdown():
     await database.disconnect()
 
 
-@app.get("/")  # RETURNS 200 RESPONSE FOR AWS LOAD BALANCER STATUS CHECKER
+@app.get("/", include_in_schema=False)  # RETURNS 200 RESPONSE FOR AWS LOAD BALANCER STATUS CHECKER
 async def heart_beat():
     return {"Heart Beat": "Ba Bump... Ba Bump... Ba Bump"}
 
 
-@app.post("/", response_model=VinResponse)
+@app.post("/", response_model=VinResponse, tags=["Validation"])
 async def validate_vehicle_identification_number(vin: VehicleIdentificationNumber):
     query = f"SELECT * FROM vehicleIdentificationNumbers WHERE vehicle_identification_number = :vin"
     result = await database.fetch_one(
@@ -82,7 +82,7 @@ async def validate_vehicle_identification_number(vin: VehicleIdentificationNumbe
     return {"exists": False}
 
 
-@app.post("/insert")
+@app.post("/insert", response_model=VehicleIdentificationNumberWithID, tags=["CRUD"])
 async def insert_vehicle_identification_number(vin: VehicleIdentificationNumber):
     try:
         query = vin_table.insert()
@@ -97,7 +97,7 @@ async def insert_vehicle_identification_number(vin: VehicleIdentificationNumber)
     return {**vin.dict(), "id": result}
 
 
-@app.post("/insert/multiple", response_model=VinInsertResponse)
+@app.post("/insert/multiple", response_model=VinInsertResponse, tags=["CRUD"])
 async def insert_multiple_vehicle_identification_numbers(
     vins: List[VehicleIdentificationNumber],
 ):
@@ -118,6 +118,17 @@ async def insert_multiple_vehicle_identification_numbers(
         except pymysql.err.IntegrityError:
             results_list.get("failed_inserts").append(vin_number)
     return results_list
+
+
+@app.delete("/delete", tags=['CRUD'], status_code=204, response_model=VehicleIdentificationNumber)
+async def remove_vehicle_identification_number(vin: VehicleIdentificationNumberWithID):
+    query = vin_table.select().filter(vin_table.c.id == vin.id, vin_table.c.vehicle_identification_number == vin.vehicle_identification_number)
+    vin_to_delete = await database.fetch_one(query=query)
+    if vin_to_delete is None:
+        raise HTTPException(status_code=404)
+    query = vin_table.delete().where(vin_table.c.id == vin.id, vin_table.c.vehicle_identification_number == vin.vehicle_identification_number)
+    await database.execute(query=query)
+    return {"vehicle_identification_number": vin.id}
 
 
 if __name__ == "__main__":
