@@ -137,8 +137,6 @@ async def insert_multiple_vehicle_identification_numbers(
             )
         except pymysql.err.IntegrityError:
             failed_inserts.append({"vehicle_identification_number": vin_number.vehicle_identification_number})
-
-
     return {"inserted_vins": inserted_vins, "failed_inserts": failed_inserts}
 
 
