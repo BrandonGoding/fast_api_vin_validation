@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import fastapi
 import pydantic.error_wrappers
 from fastapi.security.api_key import APIKey, APIKeyQuery
@@ -26,8 +26,8 @@ class VinResponse(BaseModel):
 
 
 class VinInsertResponse(BaseModel):
-    inserted_vins: List[VehicleIdentificationNumberWithID]
-    failed_inserts: List[VehicleIdentificationNumber]
+    inserted_vins: Optional[List[VehicleIdentificationNumberWithID]]
+    failed_inserts: Optional[List[VehicleIdentificationNumber]]
 
 
 DATABASE_URL = f"mysql+pymysql://{config('MYSQL_USER')}:{config('MYSQL_PASSWORD')}@{config('MYSQL_HOST')}/{config('MYSQL_DB')}"
@@ -120,7 +120,8 @@ async def insert_vehicle_identification_number(
 async def insert_multiple_vehicle_identification_numbers(
     vins: List[VehicleIdentificationNumber], api_key: APIKey = Depends(get_api_key)
 ):
-    results_list = {"inserted_vins": [], "failed_insert": []}
+    inserted_vins = []
+    failed_inserts = []
 
     for vin_number in vins:
         try:
@@ -131,12 +132,12 @@ async def insert_multiple_vehicle_identification_numbers(
                     "vehicle_identification_number": vin_number.vehicle_identification_number
                 },
             )
-            results_list.get("inserted_vins").append(
+            inserted_vins.append(
                 {**vin_number.dict(), "id": result}
             )
         except pymysql.err.IntegrityError:
-            results_list.get("failed_inserts").append(vin_number)
-    return results_list
+            failed_inserts.append({"vehicle_identification_number": vin_number.vehicle_identification_number})
+    return {"inserted_vins": inserted_vins, "failed_inserts": failed_inserts}
 
 
 @app.delete("/delete", tags=["CRUD"], status_code=204)
