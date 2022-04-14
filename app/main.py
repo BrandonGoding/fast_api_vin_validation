@@ -1,5 +1,6 @@
 from typing import List
 import fastapi
+import pydantic.error_wrappers
 from fastapi.security.api_key import APIKey, APIKeyQuery
 import pymysql.err
 import uvicorn
@@ -102,15 +103,15 @@ async def validate_vehicle_identification_number(vin: VehicleIdentificationNumbe
 async def insert_vehicle_identification_number(
     vin: VehicleIdentificationNumber, api_key: APIKey = Depends(get_api_key)
 ):
+    query = vin_table.insert()
     try:
-        query = vin_table.insert()
         result = await database.execute(
             query=query,
             values={"vehicle_identification_number": vin.vehicle_identification_number},
         )
     except pymysql.err.IntegrityError:
-        return HTTPException(
-            status_code=418, detail="Bitch I'm a Teapot!, GET YOUR OWN DAMN COFFEE!"
+        raise HTTPException(
+            status_code=409, detail="That vehicle identification number already exists."
         )
     return {**vin.dict(), "id": result}
 
